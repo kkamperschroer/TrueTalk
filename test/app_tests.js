@@ -110,6 +110,19 @@ describe('TrueTalk api server', function(){
       })
   })
 
+  it('sets the user creator to be a member of the group', function(done){
+    superagent.get(api_url + 'Users/' + fingerprint)
+      .end(function(e, res){
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+        expect(res.body.fingerprint).to.eql(fingerprint)
+        expect(typeof res.body.groups).to.eql('object')
+        expect(res.body.groups.length).to.eql(1)
+        expect(res.body.groups[0]).to.eql(groupId)
+        done()
+      })
+  })
+
   it('can get a listing of groups', function(done){
     superagent.get(api_url + 'Groups')
       .end(function(e, res){

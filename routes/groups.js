@@ -12,6 +12,9 @@ router.post('/', function(req, res, next){
     User.findOne({fingerprint: req.body.userFingerprint}, function(err, user){
         if (err){
             next(err);
+        }else if(!user){
+            // No user found. Did they forget to provide the fingerprint?
+            next(new Error("No user exists with fingerprint " + req.body.userFingerprint))
         }else{
             // Cool. Got the user. Now build a new group
             new Group({
@@ -21,6 +24,9 @@ router.post('/', function(req, res, next){
                 if(err){
                     next(err);
                 }else{
+                    // Now we need to add this group id to the users group
+                    user.groups.push(group._id)
+                    user.save()
                     res.send(group);
                 }
             })
@@ -41,9 +47,11 @@ router.get('/', function(req, res, next){
 
 /* DELETE a group */
 router.delete('/:id', function(req, res, next){
-    Group.findOne({_id: req.param('id')}, function(err, group){
+    Group.findOneAndRemove({_id: req.param('id')}, function(err, group){
         if(err){
             next(err);
+        }else if(!group){
+            next(new Error("No group given id " + req.param('id')))
         }else{
             res.send({msg: "success"});
         }
