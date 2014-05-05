@@ -6,6 +6,7 @@ var ObjectId = Schema.ObjectId
 var groupSchema = new Schema({
     createdDate: {type: Date, default: Date.now},
     name: {type: String, unique: true, required: true},
+    blurts: [ObjectId],
     userIds: [ObjectId]
 });
 

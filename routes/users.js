@@ -20,10 +20,9 @@ router.post('/', function(req, res, next){
         secret: secret
     }).save(function(err, user, count){
         if (err){
-            next(err);
+            next(err)
         }else{
-            res.send(user);
-            return;               
+            res.send(user)
         }
     });
 });

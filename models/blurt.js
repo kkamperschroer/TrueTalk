@@ -12,6 +12,7 @@ var blurtSchema = new Schema({
     replyingId: ObjectId,
     requiresResponse: {type: Boolean, default: false},
     isReply: {type: Boolean, default: false},
+    isReplyTo: ObjectId,
     flagged: {type: Boolean, default: false},
     timeout: Date
 });

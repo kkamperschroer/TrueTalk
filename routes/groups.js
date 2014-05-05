@@ -9,12 +9,12 @@ var Group = mongoose.model('Group')
 /* POST new group */
 router.post('/', function(req, res, next){
     // First, find the user
-    User.findOne({fingerprint: req.body.userFingerprint}, function(err, user){
+    User.findOne({fingerprint: req.body.fingerprint}, function(err, user){
         if (err){
             next(err);
         }else if(!user){
             // No user found. Did they forget to provide the fingerprint?
-            next(new Error("No user exists with fingerprint " + req.body.userFingerprint))
+            next(new Error("No user exists with fingerprint " + req.body.fingerprint))
         }else{
             // Cool. Got the user. Now build a new group
             new Group({

@@ -9,8 +9,8 @@ var userSchema = new Schema({
   createdDate: {type: Date, default: Date.now},
   createdIp: {type: String, required: true},
   lastActiveDate: {type: Date, default: Date.now},
-  createdBlurts: [ObjectId],
-  currentBlurts: [ObjectId],
+  blurts: [ObjectId],
+  receivedBlurts: [ObjectId],
   groups: [ObjectId],
   trollScore: {type: Number, default: 0},
   helpfulnessScore: {type: Number, default: 0}
