@@ -9,12 +9,12 @@ var Group = mongoose.model('Group')
 /* POST new group */
 router.post('/', function(req, res, next){
     // First, find the user
-    User.findOne({fingerprint: req.body.fingerprint}, function(err, user){
+    User.findOne({_id: req.body.userId}, function(err, user){
         if (err){
             next(err);
         }else if(!user){
             // No user found. Did they forget to provide the fingerprint?
-            next(new Error("No user exists with fingerprint " + req.body.fingerprint))
+            next(new Error("No user exists with id " + req.body.id))
         }else{
             // Cool. Got the user. Now build a new group
             new Group({
@@ -27,7 +27,12 @@ router.post('/', function(req, res, next){
                     // Now we need to add this group id to the users group
                     user.groups.push(group._id)
                     user.save()
-                    res.send(group);
+
+                    // Finally, build the response
+                    var response = {}
+                    response['success'] = true
+                    response['id'] = group._id
+                    res.send(response);
                 }
             })
         }

@@ -9,10 +9,11 @@ var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 
 // Get the routes for each portion set up
-var routes = require('./routes/index');
-var users = require('./routes/users');
-var groups = require('./routes/groups');
-var blurts = require('./routes/blurts');
+var authRoute = require('./routes/auth');
+var indexRoute = require('./routes/index');
+var usersRoute = require('./routes/users');
+var groupsRoute = require('./routes/groups');
+var blurtsRoute = require('./routes/blurts');
 
 // Build the app! Go express!
 var app = express();
@@ -28,11 +29,16 @@ app.use(bodyParser.urlencoded());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Finalize the route setup
-app.use('/', routes);
-app.use('/users', users);
-app.use('/blurts', blurts);
-app.use('/groups', groups);
+// Setup the index route
+app.use('/', indexRoute);
+
+// Setup the auth route
+app.use('/*', authRoute);
+
+// Finalize the route setup for every other portion
+app.use('/Users', usersRoute);
+app.use('/Blurts', blurtsRoute);
+app.use('/Groups', groupsRoute);
 
 /// catch 404 and forwarding to error handler
 app.use(function(req, res, next) {
@@ -50,6 +56,7 @@ if (app.get('env') === 'development') {
         res.status(err.status || 500);
         res.send({
             success: false,
+            reason: "Internal error. Duplicate key?",
             message: err.message,
             error: err
         });
@@ -62,8 +69,7 @@ app.use(function(err, req, res, next) {
     res.status(err.status || 500);
     res.send({
         success: false,
-        message: err.message,
-        error: {}
+        reason: "Internal error. Duplicate key?"
     });
 });
 

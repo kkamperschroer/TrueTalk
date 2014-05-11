@@ -152,9 +152,16 @@ router.get('/Responses', function(req, res, next){
         }else if (!user){
             next(new Error("No user found with fingerprint " + req.body.fingerprint))
         }else{
-            // Got the user. Find blurts
-
-            // TODO -- Kyle: You left off here
+            // We have a user. Grab some blurts
+            Blurt.find({
+                '_id' : {$in: user.receivedBlurts}
+            }, function(err, blurts){
+                if (err){
+                    next(err)
+                }else{
+                    res.send(blurts)
+                }
+            })
         }
     })
 })

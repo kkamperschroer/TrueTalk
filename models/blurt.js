@@ -4,16 +4,15 @@ var ObjectId = Schema.ObjectId
 
 // The blurt model
 var blurtSchema = new Schema({
-    createdDate: {type: Date, default: Date.now},
-    content: {type: String, required: true},
     creatorId: {type: ObjectId, required: true},
-    receiverId: ObjectId,
+    content: {type: String, required: true},
     groupId: ObjectId,
-    replyingId: ObjectId,
-    requiresResponse: {type: Boolean, default: false},
-    isReply: {type: Boolean, default: false},
-    isReplyTo: ObjectId,
-    flagged: {type: Boolean, default: false},
+    requiresReply: {type: Boolean, default: false},
+    isPublic: {type: Boolean, default: true},
+    replyId: ObjectId,
+    replyingToId: ObjectId,
+    receiverId: ObjectId,
+    createdDate: {type: Date, default: Date.now},
     timeout: Date
 });
 

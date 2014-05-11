@@ -6,61 +6,149 @@ var User = mongoose.model('User')
 var Group = mongoose.model('Group')
 var Blurt = mongoose.model('Blurt')
 
-/**
-// TODO -- This work
 // Helper function for signing
-var crypto = require('crypto.js')
+var crypto = require('crypto')
 function signRequest(request, secret){
-  var builtStr = "so salty";
+  // Add our client id to the request
+  request['client'] = "test"
+
+  // Our secret key for signing in test
+  var apiSecret = "4eff59090da963f54fefc9d848abcd65c75b1176eccd21d3061e30c042b0c5fc"
+
+  // Build the signature, piece by piece
+  var preSignature = ""
   for (var key in request){
-    builtStr += request[key];
+    preSignature += key + request[key]
   }
+
+  // Append the api key
+  preSignature += apiSecret
+
+  if(secret != undefined){
+    // Append the user secret
+    preSignature += secret
+  }
+
+  // console.log("Built preSignature = " + preSignature)
 
   // Build the signature
   signature = crypto
     .createHash("sha256")
-    .update(builtStr + secret).digest("hex")
+    .update(preSignature)
+    .digest("hex")
 
   // Add it to the object
   request["signature"] = signature;
 
   return request;
 }
-**/
+
 
 describe('TrueTalk api server', function(){
-  var api_url = "http://localhost:3000/";
-  var fingerprint = "0123456789";
-  var fingerprint2 = "9876543210";
-  var testGroupName = "Test Group Name!";
+  // Variables we need during the tests  
+  var api_url = "http://localhost:3000/"
+  var userId1
+  var secret1
+  var userId2
+  var secret2
+  var groupId
+  var blurt2Id
+  var testGroupName = "Test Group Name!"
   var testBlurtContent = "TEST BLURT!"
   var testBlurtContent2 = "TEST BLURT2!"
   var testBlurtResponse = "TEST response to blurt"
-  // to be set later
-  var groupId; 
-  var blurt2Id;
 
-  // TODO -- deal with secrets
-  var secret1;
-  var secret2;
+  //// Time for some tests ////
 
   it('can post a new user without signature', function(done){
     superagent.post(api_url + 'Users')
-      .send({
-        id: fingerprint
-      })
+      .send(signRequest({
+        fingerprint: "0123456789"
+      }))
       .end(function(e,res){
         // We expect not to have an error
         expect(e).to.eql(null)
         expect(typeof res.body).to.eql('object')
-        expect(res.body._id.length).to.eql(24)
+        expect(res.body.success).to.eql(true)
+
+        // Verify we have an id
+        expect(res.body.id.length).to.eql(24)
+
+        // Save off this id
+        userId1 = res.body.id
 
         // Better have a secret
         expect(res.body.secret.length).to.eql(64)
+
+        // Save off said secret, since we need it for every
+        // single request from here on out
+        secret1 = res.body.secret
         done()
       })
   })
 
+  it('cannot post a new user without signing the request', function(done){
+    superagent.post(api_url + 'Users')
+      .send({
+        fingerprint: "0912476235"
+      })
+      .end(function(e, res){
+        // We expect nothing in e
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+
+        // We expect success to equal false
+        expect(res.body.success).to.eql(false)
+
+        // We expect the reason to be "Invalid signature"
+        expect(res.body.reason).to.eql("Invalid signature")
+        done()
+      })
+  })
+
+  it('cannot post a second time using the same fingerprint as the first', function(done){
+    superagent.post(api_url + 'Users')
+      .send(signRequest({
+        fingerprint: "0123456789"
+      }))
+      .end(function(e,res){
+        // We expect no errors
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+
+        // We expect success to be false
+        expect(res.body.success).to.eql(false)
+
+        // We expect the reason to be ...
+        expect(res.body.reason).to.eql("Internal error. Duplicate key?")
+
+        done()
+      })
+  })
+
+  it('can create a new group', function(done){
+    superagent.post(api_url + 'Groups')
+      .send(signRequest({
+        userId: userId1,
+        name: testGroupName
+      }, secret1))
+      .end(function(e, res){
+        // We expect not to have an error
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+        expect(res.body.success).to.eql(true)
+
+        // We expect to have an id
+        expect(res.body.id.length).to.eql(24)
+
+        // Save it off for later
+        groupId = res.body.id
+
+        done()
+      })
+  })
+
+/**
   it('retrieve a user by fingerprint', function(done){
     superagent.get(api_url + 'Users/' + fingerprint)
       .end(function(e, res){
@@ -319,8 +407,16 @@ describe('TrueTalk api server', function(){
   })
 
   it('allows the first user to obtain responses', function(done){
-    // you left off here
-    done()
+    superagent.get(api_url + 'Blurts/Responses')
+      .send({
+        fingerprint: fingerprint
+      })
+      .end(function(e, res){
+        console.log(res.body)
+        expect(e).to.eql(null)
+
+        done()
+      })
   })
 
   /// Cleanup ///
@@ -356,6 +452,8 @@ describe('TrueTalk api server', function(){
         done()
       })
   })
+
+**/
 
   after(function(done){
     // Use mongoose to remove all users, groups, and blurts

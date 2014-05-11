@@ -10,10 +10,8 @@ var userSchema = new Schema({
   createdIp: {type: String, required: true},
   lastActiveDate: {type: Date, default: Date.now},
   blurts: [ObjectId],
-  receivedBlurts: [ObjectId],
+  currentBlurts: [ObjectId],
   groups: [ObjectId],
-  trollScore: {type: Number, default: 0},
-  helpfulnessScore: {type: Number, default: 0}
 });
 
 // Ensure our index on fingerprint is unique.
