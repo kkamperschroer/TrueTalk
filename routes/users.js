@@ -25,45 +25,14 @@ router.post('/', function(req, res, next){
         }else{
             // Looks good. Let's build the appropriate response
             var response = {}
-            response['success'] = true
-            response['id'] = user._id
-            response['secret'] = user.secret
+            response.success = true
+            response.id = user._id
+            response.secret = user.secret
             res.send(response)
         }
     });
 });
 
-/* GET user with fingerprint. */
-router.get('/:id', function(req, res, next) {
-    User.findOne({fingerprint: req.param('id')}, function (err, user){
-        if (err){
-            next(err);
-        }else{
-            res.send(user);
-        }
-    })
-});
 
-/* GET all users */
-router.get('/', function(req, res, next){
-    User.find(function(err, users){
-        if (err){
-            next(err);
-        }else{
-            res.send(users);
-        }
-    })
-})
-
-/* DELETE a user by fingerprint.  */
-router.delete('/:id', function(req, res, next){
-    User.findOneAndRemove({fingerprint: req.param('id')}, function(err){
-        if (err){
-            next(err);
-        }else{
-            res.send({msg: "success"});
-        }
-    })
-})
 
 module.exports = router;

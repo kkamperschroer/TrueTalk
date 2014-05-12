@@ -9,60 +9,58 @@ var Blurt = mongoose.model('Blurt')
 
 /* POST new blurt */
 router.post('/', function(req, res, next){
-    // Find the user
-    User.findOne({fingerprint: req.body.fingerprint}, function(err, user){
+    // Build a new blurt
+    new Blurt({
+        content: req.body.content,
+        creatorId: req.user._id,
+        groupId: req.body.groupId,
+        requiresReply: req.body.requiresReply | false,
+        isPublic: req.body.isPublic | true
+    }).save(function(err, blurt){
         if(err){
             next(err)
-        }else if(!user){
-            next(new Error("No user exists with fingerprint " + req.body.fingerprint))
         }else{
-            // Looks good. Build a new blurt
-            new Blurt({
-                content: req.body.content,
-                creatorId: user._id,
-                groupId: req.body.groupId,
-                replyingId: req.body.replyingId,
-                requiresResponse: req.body.requiresResponse | false,
-                isReply: req.body.isReply | false,
-                isReplyTo: req.body.isReplyTo
-            }).save(function(err, blurt, count){
-                if(err){
-                    next(err)
-                }else{
-                    // If there is a group id attached, we need to
-                    // add this blurt to it
-                    if (req.body.groupId){
-                        Group.findOne({_id: req.body.groupId}, function(err, group){
-                            if (err){
-                                next(err);
-                            }else if (!group){
-                                // Oh no. Backtrack and delete this blurt
-                                blurt.remove()
-                                next(new Error("No group exists with id " + req.body.groupId))
-                            }else{
-                                // Update the group
-                                group.blurts.push(blurt._id)
-                                group.save()
-
-                                // Update the user
-                                user.blurts.push(blurt._id)
-                                user.save()
-
-                                // Send the response
-                                res.send(blurt)
-                            }
-                        })
+            // If there is a group id attached, we need to
+            // add this blurt to it
+            if (req.body.groupId){
+                Group.findOne({_id: req.body.groupId}, function(err, group){
+                    if (err){
+                        next(err);
+                    }else if (!group){
+                        // Oh no. Backtrack and delete this blurt
+                        blurt.remove()
+                        next(new Error("No group exists with id " + req.body.groupId))
                     }else{
-                        // No group. Update user and send blurt
-                        user.blurts.push(blurt._id)
-                        user.save()
-                        res.send(blurt)
+                        // Update the group
+                        group.blurts.push(blurt._id)
+                        group.save()
+
+                        // Update the user and send the blurt
+                        sendBlurtResponse(blurt, req.user, res)
                     }
-                }
-            })
+                })
+            }else{
+                // Update the user and send the blurt
+                sendBlurtResponse(blurt, req.user, res)
+            }
         }
     })
 })
+
+// Helper function to build the blurt response
+function sendBlurtResponse(blurt, user, res){
+    // Save this as one of the users blurts
+    user.blurts.push(blurt._id)
+    user.save()
+
+    // Build the response
+    var response = {}
+    response.success = true
+    response.id = blurt._id
+
+    // Send it off
+    res.send(response)
+}
 
 /* GET a random blurt */
 router.get('/Gimme', function(req, res, next){

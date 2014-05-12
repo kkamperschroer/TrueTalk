@@ -29,7 +29,7 @@ function signRequest(request, secret){
     preSignature += secret
   }
 
-  // console.log("Built preSignature = " + preSignature)
+  //console.log("Built preSignature = " + preSignature)
 
   // Build the signature
   signature = crypto
@@ -60,7 +60,7 @@ describe('TrueTalk api server', function(){
 
   //// Time for some tests ////
 
-  it('can post a new user without signature', function(done){
+  it('can post a new user without a secret in the signature', function(done){
     superagent.post(api_url + 'Users')
       .send(signRequest({
         fingerprint: "0123456789"
@@ -144,6 +144,108 @@ describe('TrueTalk api server', function(){
         // Save it off for later
         groupId = res.body.id
 
+        done()
+      })
+  })
+
+  it('cannot create a second group with the same name', function(done){
+    superagent.post(api_url + 'Groups')
+      .send(signRequest({
+        userId: userId1,
+        name: testGroupName
+      }, secret1))
+      .end(function(e, res){
+        // We expect not to have an error
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+
+        // We expect success to be false
+        expect(res.body.success).to.eql(false)
+
+        // We expect the following reason
+        expect(res.body.reason).to.eql("Internal error. Duplicate key?")
+
+        done()
+      })    
+  })
+
+  it('can join a group', function(done){
+    superagent.post(api_url + 'Groups/Join')
+      .send(signRequest({
+        userId: userId1,
+        groupId: groupId
+      }, secret1))
+      .end(function(e, res){
+        // We expect not to have an error
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+        expect(res.body.success).to.eql(true)
+
+        done()
+      })
+  })
+
+  it('cannot join a group a second time', function(done){
+    superagent.post(api_url + 'Groups/Join')
+      .send(signRequest({
+        userId: userId1,
+        groupId: groupId
+      }, secret1))
+      .end(function(e, res){
+        // We expect not to have an error
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+        expect(res.body.success).to.eql(false)
+
+        // We expect the message to be because this user is already a member
+        expect(res.body.message).to.eql("User is already a member of this group")
+
+        done()
+      })
+  })
+
+  it('can receive a listing of groups in the system', function(done){
+    superagent.get(api_url + 'Groups')
+      .send(signRequest({
+        userId: userId1,
+        offset: 0
+      }, secret1))
+      .end(function(e, res){
+        // We don't expect to have an error
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+        expect(res.body.success).to.eql(true)
+
+        // Now, we expect a single element from the group we have created
+        expect(typeof res.body.groups).to.eql('object')
+        expect(res.body.groups.length).to.eql(1)
+        expect(res.body.groups[0].name).to.eql(testGroupName)
+        expect(res.body.groups[0].id).to.eql(groupId)
+        expect(res.body.groups[0].isMember).to.eql(true)
+
+        done()
+      })
+  })
+
+  it('can post a new blurt globally', function(done){
+    superagent.post(api_url + 'Blurts')
+      .send(signRequest({
+        userId: userId1,
+        content: testBlurtContent,
+        // omitting groupId
+        requiresReply: true,
+        isPublic: true
+      }, secret1))
+      .end(function(e, res){
+        // We don't expect any issues
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+        expect(res.body.success).to.eql(true)
+
+        // We expect a blurt id in response
+        expect(res.body.id.length).to.eql(24)
+
+        // Cool. Looks good.
         done()
       })
   })

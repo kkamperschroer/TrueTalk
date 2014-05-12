@@ -42,7 +42,7 @@ function authenticate(req, res, next){
             }
         }
 
-         // Ok. Let's build up the signature, ignoring signature
+        // Ok. Let's build up the signature, ignoring signature
         var preSignature = ""
         for (var key in req.body){
             if (key == "signature"){
@@ -58,6 +58,14 @@ function authenticate(req, res, next){
         // Append the user if we have one
         if (user){
             preSignature += user.secret
+
+            // Save the last active date for this user as well
+            user.lastActiveDate = Date.now()
+            user.save()
+
+            // While we are here, save off the user for later
+            req.user = user
+
         }
 
         // console.log("Built preSignature = " + preSignature)

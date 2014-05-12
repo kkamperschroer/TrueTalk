@@ -8,57 +8,86 @@ var Group = mongoose.model('Group')
 
 /* POST new group */
 router.post('/', function(req, res, next){
-    // First, find the user
-    User.findOne({_id: req.body.userId}, function(err, user){
-        if (err){
+    // Build a new group
+    new Group({
+        name: req.body.name,
+        userIds: [req.user._id]
+    }).save(function(err, group, count){
+        if(err){
             next(err);
-        }else if(!user){
-            // No user found. Did they forget to provide the fingerprint?
-            next(new Error("No user exists with id " + req.body.id))
         }else{
-            // Cool. Got the user. Now build a new group
-            new Group({
-                name: req.body.name,
-                userIds: [user._id]
-            }).save(function(err, group, count){
-                if(err){
-                    next(err);
-                }else{
-                    // Now we need to add this group id to the users group
-                    user.groups.push(group._id)
-                    user.save()
+            // Now we need to add this group id to the users group
+            req.user.groups.push(group._id)
+            req.user.save()
 
-                    // Finally, build the response
-                    var response = {}
-                    response['success'] = true
-                    response['id'] = group._id
-                    res.send(response);
-                }
-            })
+            // Finally, build the response
+            var response = {}
+            response.success = true
+            response.id = group._id
+            res.send(response);
+        }
+    })
+})
+
+/* POST to join a group */
+router.post('/Join', function(req, res, next){
+    // Check if this group exists
+    Group.findOne({_id: req.body.groupId}, function(err, group){
+        // Ensure the user is not already a member of this group
+        if(group.members.indexOf(req.user._id) > -1){
+            // Oh no. Already exists. Can't re-join
+            next(new Error("User is already a member of this group"))
+        }else{
+            // Update the users group
+            req.user.groups.push(group._id)
+            req.user.save()
+
+            // Update the groups members
+            group.members.push(req.user._id)
+            group.save()
+
+            // Ok. Build the response
+            var response = {}
+            response.success = true
+            res.send(response)
         }
     })
 })
 
 /* GET all groups */
 router.get('/', function(req, res, next){
-    Group.find(function(err, groups){
+    // Get the offset setup correctly
+    var offset = req.body.offset | 0
+
+    // Grab the top 50 from offset, sorted alphabetically
+    Group.find({},
+               null,
+               {limit: 50, skip: offset, sort: {name: -1}},
+               function(err, groups){
         if(err){
             next(err)
         }else{
-            res.send(groups)
-        }
-    })
-})
+            // Build the response
+            var response = {}
+            response.success = true
 
-/* DELETE a group */
-router.delete('/:id', function(req, res, next){
-    Group.findOneAndRemove({_id: req.param('id')}, function(err, group){
-        if(err){
-            next(err);
-        }else if(!group){
-            next(new Error("No group given id " + req.param('id')))
-        }else{
-            res.send({msg: "success"});
+            // Build the array of groups
+            var groupsResponse = []
+            for(var i=0; i<groups.length; i++){
+                var curGroup = {}
+                curGroup.name = groups[i].name
+                curGroup.id = groups[i]._id
+                curGroup.isMember = (req.user.groups.indexOf(curGroup.id) > -1)
+
+                // Push it into our groups array
+                groupsResponse.push(curGroup)
+            }
+
+            // Set the groups object we respond with
+            response.groups = groupsResponse
+
+            // Send it off
+            res.send(response)
         }
     })
 })
