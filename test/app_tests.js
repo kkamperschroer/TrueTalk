@@ -57,6 +57,7 @@ describe('TrueTalk api server', function(){
   var testBlurtContent = "TEST BLURT!"
   var testBlurtContent2 = "TEST BLURT2!"
   var testBlurtResponse = "TEST response to blurt"
+  var genericError = "Internal error. Likely bad request."
 
   //// Time for some tests ////
 
@@ -120,7 +121,7 @@ describe('TrueTalk api server', function(){
         expect(res.body.success).to.eql(false)
 
         // We expect the reason to be ...
-        expect(res.body.reason).to.eql("Internal error. Duplicate key?")
+        expect(res.body.reason).to.eql(genericError)
 
         done()
       })
@@ -163,7 +164,7 @@ describe('TrueTalk api server', function(){
         expect(res.body.success).to.eql(false)
 
         // We expect the following reason
-        expect(res.body.reason).to.eql("Internal error. Duplicate key?")
+        expect(res.body.reason).to.eql(genericError)
 
         done()
       })    
@@ -245,318 +246,121 @@ describe('TrueTalk api server', function(){
         // We expect a blurt id in response
         expect(res.body.id.length).to.eql(24)
 
+        // Store off this id for later
+        blurtId = res.body.id
+
         // Cool. Looks good.
         done()
       })
   })
 
-/**
-  it('retrieve a user by fingerprint', function(done){
-    superagent.get(api_url + 'Users/' + fingerprint)
-      .end(function(e, res){
-        expect(e).to.eql(null)
-        expect(typeof res.body).to.eql('object')
-        expect(res.body._id.length).to.eql(24)
-        expect(res.body.fingerprint).to.eql(fingerprint)
-        done()
-      })
-  })
-
-  it('can post a second user', function(done){
-    superagent.post(api_url + 'Users')
-      .send({
-        id: fingerprint2
-      })
-      .end(function(e,res){
-        // We expect not to have an error
-        expect(e).to.eql(null)
-        expect(typeof res.body).to.eql('object')
-        expect(res.body._id.length).to.eql(24)
-        expect(res.body.secret.length).to.eql(64)
-        done()
-      })
-  })
-
-  it('can get a listing of both users', function(done){
-    superagent.get(api_url + 'Users')
-      .end(function(e, res){
-        // Don't expect an error
-        expect(e).to.eql(null)
-        expect(typeof res.body).to.eql('object')
-        expect(res.body.length).to.eql(2)
-        expect(typeof res.body[0]).to.eql('object')
-        expect(typeof res.body[1]).to.eql('object')
-        expect(res.body[0].fingerprint).to.eql(fingerprint)
-        expect(res.body[1].fingerprint).to.eql(fingerprint2)
-        done()
-      })
-  })
-
-  it('can create a group', function(done){
-    superagent.post(api_url + 'Groups')
-      .send({
-        name: testGroupName,
-        fingerprint: fingerprint
-      })
-      .end(function(e, res){
-        expect(e).to.eql(null)
-        expect(typeof res.body).to.eql('object')
-        expect(res.body.name).to.eql(testGroupName)
-        expect(res.body.createdDate).to.not.eql(null)
-        expect(res.body.userIds.length).to.eql(1)
-        expect(res.body.userIds[0].length).to.eql(24)
-        groupId = res.body._id;
-        done()
-      })
-  })
-
-  it('sets the user creator to be a member of the group', function(done){
-    superagent.get(api_url + 'Users/' + fingerprint)
-      .end(function(e, res){
-        expect(e).to.eql(null)
-        expect(typeof res.body).to.eql('object')
-        expect(res.body.fingerprint).to.eql(fingerprint)
-        expect(typeof res.body.groups).to.eql('object')
-        expect(res.body.groups.length).to.eql(1)
-        expect(res.body.groups[0]).to.eql(groupId)
-        done()
-      })
-  })
-
-  it('can get a listing of groups', function(done){
-    superagent.get(api_url + 'Groups')
-      .end(function(e, res){
-        expect(e).to.eql(null)
-        expect(typeof res.body).to.eql('object')
-        expect(res.body.length).to.eql(1)
-        expect(res.body[0].userIds.length).to.eql(1)
-        expect(res.body[0].userIds[0].length).to.eql(24)
-        done()
-      })
-  })
-
-  it('allows a user to post a blurt without a group', function(done){
+  it('can post a new blurt directly to a group', function(done){
     superagent.post(api_url + 'Blurts')
-      .send({
-        content: testBlurtContent,
-        fingerprint: fingerprint
-      })
-      .end(function(e, res){
-        // no errors
-        expect(e).to.eql(null)
-        expect(typeof res.body).to.eql('object')
-        expect(res.body._id.length).to.eql(24)
-
-        // get the id
-        blurtId = res.body._id;
-
-        // Verify all components are as expected
-        expect(res.body.creatorId).to.not.eql(null)
-        expect(res.body._id.length).to.eql(24)
-        expect(res.body.groupId).to.eql(undefined)
-        expect(res.body.content).to.eql(testBlurtContent)
-        expect(res.body.replyingId).to.eql(undefined)
-        expect(res.body.requiresResponse).to.eql(false)
-        expect(res.body.isReply).to.eql(false)
-        expect(res.body.flagged).to.eql(false)
-        done()
-      })
-  })
-
-  it('fails to post a new blurt when the fingerprint is invalid', function(done){
-    superagent.post(api_url + 'Blurts')
-      .send({
-        content: testBlurtContent,
-        fingerprint: "i made this up"
-      })
-      .end(function(e, res){
-        expect(e).to.eql(null)
-        expect(res.body.success).to.eql(false)
-        done()
-      })
-  })
-
-  it('fails to post a new blurt with invalid group id', function(done){
-    superagent.post(api_url + 'Blurts')
-      .send({
-        content: testBlurtContent,
-        fingerprint: fingerprint,
-        groupId: "012345678901234567890123"
-      })
-      .end(function(e, res){
-        expect(e).to.eql(null)
-        expect(res.body.success).to.eql(false)
-        done()
-      })
-  })
-
-  it('allows a blurt to be posted to a single group', function(done){
-    superagent.post(api_url + 'Blurts')
-      .send({
+      .send(signRequest({
+        userId: userId1,
         content: testBlurtContent2,
-        fingerprint: fingerprint,
         groupId: groupId,
-        requiresResponse: true
-      })
+        requiresReply: false,
+        isPublic: true
+      }, secret1))
       .end(function(e, res){
-        expect(e).to.eql(null)
-        expect(res.body.groupId).to.eql(groupId)
-        expect(res.body.creatorId.length).to.eql(24)
-        expect(res.body._id.length).to.eql(24)
-        var blurt2Id = res.body._id
-        done()
-      })
-  })
-
-  it('prevents a user from receiving their own global blurt', function(done){
-    superagent.get(api_url + 'Blurts/Gimme')
-      .send({
-        fingerprint: fingerprint
-      })
-      .end(function(e, res){
-        expect(e).to.eql(null)
-        expect(res.body.msg).to.not.eql(null)
-        expect(res.body.msg).to.eql("No new blurts")
-        done()
-      })
-  })
-
-  it('prevents a user from receiving their own group blurt', function(done){
-    superagent.get(api_url + 'Blurts/Gimme')
-      .send({
-        fingerprint: fingerprint,
-        groupId: groupId
-      })
-      .end(function(e, res){
-        expect(e).to.eql(null)
-        expect(res.body.msg).to.not.eql(null)
-        expect(res.body.msg).to.eql("No new blurts")
-        done()
-      })
-  })
-
-  it('allows a second user to receive a global blurt', function(done){
-    superagent.get(api_url + 'Blurts/Gimme')
-      .send({
-        fingerprint: fingerprint2
-      })
-      .end(function(e, res){
-        expect(e).to.eql(null)
-        expect(res.body._id.length).to.eql(24)
-        expect(res.body.requiresResponse).to.eql(false)
-        expect(res.body.timeout).to.eql(undefined)
-        expect(res.body.content).to.eql(testBlurtContent)
-        expect(res.body.groupId).to.eql(undefined)
-        done()
-      })
-  })
-
-  it('allows a second user to receive a blurt from a group', function(done){
-    superagent.get(api_url + 'Blurts/Gimme')
-      .send({
-        fingerprint: fingerprint2,
-        groupId: groupId
-      })
-      .end(function(e, res){
-        expect(e).to.eql(null)
-        expect(res.body._id.length).to.eql(24)
-        expect(res.body.requiresResponse).to.eql(true)
-        expect(res.body.timeout).to.not.eql(undefined)
-        expect(res.body.content).to.eql(testBlurtContent2)
-        expect(res.body.groupId).to.eql(groupId)
-        done()
-      })
-  })
-
-  it('allows a user to get a listing of their blurts', function(done){
-    superagent.get(api_url + 'Blurts/Mine')
-      .send({
-        fingerprint: fingerprint
-      })
-      .end(function(e, res){
+        // We don't expect any issues
         expect(e).to.eql(null)
         expect(typeof res.body).to.eql('object')
-        expect(res.body.length).to.eql(2)
-        expect(res.body[0].groupId).to.eql(undefined)
-        expect(res.body[0].content).to.eql(testBlurtContent)
-        expect(res.body[0].requiresResponse).to.eql(false)
-        expect(res.body[1].groupId).to.eql(groupId)
-        expect(res.body[1].content).to.eql(testBlurtContent2)
-        expect(res.body[1].requiresResponse).to.eql(true)
-        // Haven't received a response
-        expect(res.body[1].replyingId).to.eql(undefined)
+        expect(res.body.success).to.eql(true)
+
+        // We expect a blurt id in response
+        expect(res.body.id.length).to.eql(24)
+
+        // Store off this id for later
+        blurt2Id = res.body.id
+
+        // Cool. Looks perfect!
         done()
       })
   })
 
-  it('allows a second user to respond to a blurt', function(done){
+  it('cannot post a blurt to an invalid group', function(done){
     superagent.post(api_url + 'Blurts')
-      .send({
-        content: testBlurtResponse,
-        fingerprint: fingerprint2,
-        groupId: groupId,
-        isReply: true,
-        isReplyTo: blurt2Id
-      })
+      .send(signRequest({
+        userId: userId1,
+        content: testBlurtContent2,
+        groupId: userId1, // obviously not a valid group id
+        requiresReply: false,
+        isPublic: true
+      }, secret1))
       .end(function(e, res){
+        // We don't expect any exceptions
         expect(e).to.eql(null)
         expect(typeof res.body).to.eql('object')
-        expect(res.body.isReply).to.eql(true)
-        expect(res.body.isReplyTo).to.eql(blurt2Id)
-        expect(res.body.content).to.eql(testBlurtResponse)
+
+        // We expect success to be false
+        expect(res.body.success).to.eql(false)
+
+        // We expect a particular message
+        expect(res.body.message).to.eql("No group exists with id " + userId1)
+
+        // Cool. Looks perfect!
         done()
       })
   })
 
-  it('allows the first user to obtain responses', function(done){
-    superagent.get(api_url + 'Blurts/Responses')
-      .send({
-        fingerprint: fingerprint
-      })
+  it('can allow a user to retrieve their own blurts with a beforeDate of 0 (so none)', function(done){
+    superagent.get(api_url + 'Blurts')
+      .send(signRequest({
+        userId: userId1,
+        beforeDate: 0,
+      }, secret1))
       .end(function(e, res){
-        console.log(res.body)
-        expect(e).to.eql(null)
-
-        done()
-      })
-  })
-
-  /// Cleanup ///
-
-  it('can remove a user by fingerprint', function(done){
-    superagent.del(api_url + 'Users/'+fingerprint)
-      .end(function(e, res){
-        // console.log(res.body)
+        // We don't expect any issues
         expect(e).to.eql(null)
         expect(typeof res.body).to.eql('object')
-        expect(res.body.msg).to.eql('success')
+        expect(res.body.success).to.eql(true)
+
+        // We expect our blurt array to be empty
+        expect(res.body.blurts.length).to.eql(0)
+
         done()
       })
   })
 
-  it('can remove a second user by fingerprint', function(done){
-    superagent.del(api_url + 'Users/'+fingerprint2)
+  it('can allow a user to retieve their own blurts from all time', function(done){
+    superagent.get(api_url + 'Blurts')
+      .send(signRequest({
+        userId: userId1
+      }, secret1))
       .end(function(e, res){
-        // console.log(res.body)
+        // We don't expect any issues
         expect(e).to.eql(null)
         expect(typeof res.body).to.eql('object')
-        expect(res.body.msg).to.eql('success')
+        expect(res.body.success).to.eql(true)
+
+        // We expect to have 2 blurts.
+        expect(res.body.blurts.length).to.eql(2)
+
+        // We expect the first to be the most recent
+        expect(res.body.blurts[0].id).to.eql(blurt2Id)
+        expect(res.body.blurts[0].content).to.eql(testBlurtContent2)
+
+        // We expect the send to be the original post
+        expect(res.body.blurts[1].id).to.eql(blurtId)
+        expect(res.body.blurts[1].content).to.eql(testBlurtContent)
+
         done()
       })
   })
 
-  it('can delete a group by id', function(done){
-    superagent.del(api_url + 'Groups/' + groupId)
-      .end(function(e, res){
-        expect(e).to.eql(null)
-        expect(typeof res.body).to.eql('object')
-        expect(res.body.msg).to.eql('success')
-        done()
-      })
+  it('can get a listing of public blurts globally', function(done){
+
+    done()
   })
 
-**/
+  it('can get a listing of public blurts in a group', function(done){
 
+    done()
+  })
+
+  //// Cleanup  work! ////
   after(function(done){
     // Use mongoose to remove all users, groups, and blurts
     User.find({}).remove().exec()

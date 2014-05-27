@@ -68,7 +68,7 @@ function authenticate(req, res, next){
 
         }
 
-        // console.log("Built preSignature = " + preSignature)
+        //console.log("Built preSignature = " + preSignature)
 
         // Ok. Now sha256 the whole thing
         var signature = crypto

@@ -62,6 +62,12 @@ function sendBlurtResponse(blurt, user, res){
     res.send(response)
 }
 
+/* POST a reply to a blurt */
+router.post('/Reply', function(req, res, next){
+    // todo
+})
+
+// TODO TODO TODO -- Not yet rewritten //
 /* GET a random blurt */
 router.get('/Gimme', function(req, res, next){
     // Find the user given the fingerprint
@@ -121,26 +127,75 @@ router.get('/Gimme', function(req, res, next){
 })
 
 /* GET blurts for a specific user */
-router.get('/Mine', function(req, res, next){
-    // Find the user with this fingerprint
-    User.findOne({fingerprint: req.body.fingerprint}, function(err, user){
-        if (err){
-            next(err)
-        }else if (!user){
-            next(new Error("No user found with fingerprint " + req.body.fingerprint))
-        }else{
-            // We have a user. Find all the blurts they own
-            Blurt.find({creatorId: user._id}, function(err, blurts){
-                if (err){
-                    next(err)
-                }else{
-                    res.send(blurts)
-                }
-            })
+router.get('/', function(req, res, next){
+    console.log("beforeDateBody = " + req.body.beforeDate)
+    // Figure out what the beforeDate is
+    var beforeDate;
+    if (req.body.beforeDate != undefined){
+        // Verify the date has been set
+        try{
+            beforeDate = new Date(req.body.beforeDate)
+        }catch(err){
+            // Oh no.
+            next(new Error("Invalid beforeDate."))
         }
-    })
+    }else{
+        beforeDate = new Date() // Now!
+    }
+
+    // Get all of the blurts for this user before the specific date
+    Blurt.find({creatorId: req.user._id, createdDate: {$lte: beforeDate}},
+               null,
+               {limit: 50, sort: {createdDate: -1}},
+               function(err, blurts){
+        if(err){
+            next(err)
+        }else{
+            // Build up the real response
+            var response = {}
+            response.success = true;
+
+            // Build up our blurts
+            var resBlurts = []
+            for(var i=0; i<blurts.length; i++){
+                // Get the current blurt
+                var blurt = blurts[i]
+
+                // Build the response blurt object
+                var resBlurt = {}
+                resBlurt.id = blurt._id
+                resBlurt.content = blurt.content
+                if (blurt.groupId){
+                    resBlurt.groupId = blurt.groupId
+                }
+                resBlurt.requiresReply = blurt.requiresReply
+                if (blurt.replyId){
+                    resBlurt.replyId = blurt.replyId
+                }
+                if (blurt.replyingToId){
+                    resBlurt.replyingToId = blurt.replyingToId
+                }
+                resBlurt.createdDate = blurt.createdDate
+
+                // Push the newly built blurt into our array
+                resBlurts.push(resBlurt)
+            }
+            // Our response needs blurts!
+            response.blurts = resBlurts
+
+            // Send the response
+            res.send(response)
+        }               
+   })
 })
 
+/* GET public blurts */
+router.get('/Public', function(req, res, next){
+    // Run the find on blurts given the beforeDate and groupId
+
+})
+
+// TODO TODO TODO -- Not yet rewritten //
 /* GET blurts that are responses for a specific user */
 router.get('/Responses', function(req, res, next){
     // Find the user with this fingerprint

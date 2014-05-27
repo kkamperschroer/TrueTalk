@@ -56,7 +56,7 @@ if (app.get('env') === 'development') {
         res.status(err.status || 500);
         res.send({
             success: false,
-            reason: "Internal error. Duplicate key?",
+            reason: "Internal error. Likely bad request.",
             message: err.message,
             error: err
         });
@@ -69,7 +69,7 @@ app.use(function(err, req, res, next) {
     res.status(err.status || 500);
     res.send({
         success: false,
-        reason: "Internal error. Duplicate key?"
+        reason: "Internal error. Likely bad request."
     });
 });
 
