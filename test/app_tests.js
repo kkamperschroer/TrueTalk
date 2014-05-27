@@ -351,13 +351,78 @@ describe('TrueTalk api server', function(){
   })
 
   it('can get a listing of public blurts globally', function(done){
+    superagent.get(api_url + 'Blurts/Public')
+      .send(signRequest({
+        userId: userId1
+      }, secret1))
+      .end(function(e, res){
+        // We don't expect any errors
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+        expect(res.body.success).to.eql(true)
 
-    done()
+        // We expect only one blurt that was the global one
+        expect(res.body.blurts.length).to.eql(1)
+        expect(res.body.blurts[0].id).to.eql(blurtId)
+        done()
+      })
   })
 
   it('can get a listing of public blurts in a group', function(done){
+    superagent.get(api_url + 'Blurts/Public')
+      .send(signRequest({
+        userId: userId1,
+        groupId: groupId
+      }, secret1))
+      .end(function(e, res){
+        // We don't expect any errors
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+        expect(res.body.success).to.eql(true)
 
-    done()
+        // We expect only one blurt that was the global one
+        expect(res.body.blurts.length).to.eql(1)
+        expect(res.body.blurts[0].id).to.eql(blurt2Id)
+        done()
+      })
+  })
+
+  it('can get an empty listing of public blurts in a non-existant group', function(done){
+    superagent.get(api_url + 'Blurts/Public')
+      .send(signRequest({
+        userId: userId1,
+        groupId: userId1
+      }, secret1))
+      .end(function(e, res){
+        // We don't expect any errors
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+        expect(res.body.success).to.eql(true)
+
+        // We expect only one blurt that was the global one
+        expect(res.body.blurts.length).to.eql(0)
+        done()
+      })
+  })
+
+  it('can fail to retrieve any blurts, since there are none available', function(done){
+    superagent.get(api_url + 'Blurts/Random')
+      .send(signRequest({
+        userId: userId1
+      }, secret1))
+      .end(function(e, res){
+        // We don't expect any errors
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+
+        // We expect success to be false, since there were none for us
+        expect(res.body.success).to.eql(true)
+
+        // We expect the reason to be "no new blurts ..."
+        expect(res.body.reason).to.eql("No new blurts available at this time.")
+
+        done()
+      })
   })
 
   //// Cleanup  work! ////

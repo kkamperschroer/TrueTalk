@@ -67,81 +67,16 @@ router.post('/Reply', function(req, res, next){
     // todo
 })
 
-// TODO TODO TODO -- Not yet rewritten //
 /* GET a random blurt */
-router.get('/Gimme', function(req, res, next){
-    // Find the user given the fingerprint
-    User.findOne({fingerprint: req.body.fingerprint}, function(err, user){
-        if (err){
-            next(err)
-        }else if (!user){
-            next(new Error("No user exists with fingerprint " + req.body.fingerprint))
-        }else{
-            // We have a user. See if there is a specific group
-            Group.findOne({_id: req.body.groupId}, function(err, group){
-                if(err){
-                    next(err)
-                }else{
-                    // Group may be undefined which is global
-                    if (!group){
-                        group = {_id: undefined}
-                    }
-
-                    // Find a blurt for this group
-                    Blurt.find({
-                        groupId: group._id,
-                        creatorId: {$ne: user._id},
-                        isReply: false,
-                        receiverId: undefined
-                    }, function(err, blurts){
-                        if (err){
-                            next(err)
-                        }else if(blurts.length == 0){
-                            // Nothing to send!
-                            res.send({msg: "No new blurts"})
-                        }else{
-                            // Pick one at random
-                            var blurt = blurts[Math.floor(Math.random() * blurts.length)]
-                            
-                            // possible race condition! Theoretically 2 people could receive this blurt
- 
-                            // Immediately set the blurts receiver id
-                            blurt.receiverId = user._id;
-                            if (blurt.requiresResponse){
-                                blurt.timeout = Date.now() + 7200000; // 2 hours
-                            }
-                            blurt.save()
-
-                            // Give this blurt to the user
-                            user.receivedBlurts.push(blurt._id)
-                            user.save()
-
-                            // Now send this blurt to the user
-                            res.send(blurt)
-                        }
-                    })
-                }
-            })
-        }
-    })
+router.get('/Random', function(req, res, next){
+    // TODO -- Write this!
+    
 })
 
 /* GET blurts for a specific user */
 router.get('/', function(req, res, next){
-    console.log("beforeDateBody = " + req.body.beforeDate)
     // Figure out what the beforeDate is
-    var beforeDate;
-    if (req.body.beforeDate != undefined){
-        // Verify the date has been set
-        try{
-            beforeDate = new Date(req.body.beforeDate)
-        }catch(err){
-            // Oh no.
-            next(new Error("Invalid beforeDate."))
-        }
-    }else{
-        beforeDate = new Date() // Now!
-    }
+    var beforeDate = getBeforeDateTime(req.body.beforeDate)
 
     // Get all of the blurts for this user before the specific date
     Blurt.find({creatorId: req.user._id, createdDate: {$lte: beforeDate}},
@@ -165,16 +100,10 @@ router.get('/', function(req, res, next){
                 var resBlurt = {}
                 resBlurt.id = blurt._id
                 resBlurt.content = blurt.content
-                if (blurt.groupId){
-                    resBlurt.groupId = blurt.groupId
-                }
+                resBlurt.groupId = blurt.groupId
                 resBlurt.requiresReply = blurt.requiresReply
-                if (blurt.replyId){
-                    resBlurt.replyId = blurt.replyId
-                }
-                if (blurt.replyingToId){
-                    resBlurt.replyingToId = blurt.replyingToId
-                }
+                resBlurt.replyId = blurt.replyId
+                resBlurt.replyingToId = blurt.replyingToId
                 resBlurt.createdDate = blurt.createdDate
 
                 // Push the newly built blurt into our array
@@ -189,10 +118,68 @@ router.get('/', function(req, res, next){
    })
 })
 
+// Helper function to get the beforeDate value
+function getBeforeDateTime(beforeDate){
+    var retDate;
+    if (beforeDate != undefined){
+        // Verify the date has been set
+        try{
+            retDate = new Date(beforeDate)
+        }catch(err){
+            // Oh no.
+            next(new Error("Invalid beforeDate."))
+        }
+    }else{
+        retDate = new Date() // Now!
+    }
+
+    // Return our built date
+    return retDate;
+}
+
 /* GET public blurts */
 router.get('/Public', function(req, res, next){
-    // Run the find on blurts given the beforeDate and groupId
+    // Setup the before date var
+    var beforeDate = getBeforeDateTime(req.body.beforeDate)
 
+    // Run the find on blurts given the beforeDate and groupId
+    Blurt.find({
+                    isPublic: true,
+                    groupId: req.body.groupId, // May be undefined for global
+                    createdDate: {$lte: beforeDate}
+                },
+               null,
+               {limit: 50, sort: {createdDate: -1}},
+               function(err, blurts){
+        if(err){
+            next(err)
+        }else{
+            // Build up the response
+            var response = {}
+            response.success = true
+
+            var blurtResponses = []
+            for(var i=0; i<blurts.length; i++){
+                var blurt = blurts[i]
+                var blurtResponse = {}
+                blurtResponse.id = blurt._id
+                blurtResponse.content = blurt.content
+                blurtResponse.groupId = blurt.groupId
+                blurtResponse.requiresReply = blurt.requiresReply
+                blurtResponse.replyId = blurt.replyId
+                blurtResponse.replyingToId = blurt.replyingToId
+                blurtResponse.createdDate = blurt.createdDate
+
+                // Push it into our response array
+                blurtResponses.push(blurtResponse)
+            }
+            // Attach the array to our response
+            response.blurts = blurtResponses
+
+            // Send it off
+            res.send(response)
+        }
+    })
 })
 
 // TODO TODO TODO -- Not yet rewritten //
