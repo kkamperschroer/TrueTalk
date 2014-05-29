@@ -491,6 +491,26 @@ describe('TrueTalk api server', function(){
       })
   })
 
+  it('fails to retrieve the same blurt twice for the second user', function(done){
+    superagent.get(api_url + 'Blurts/Random')
+      .send(signRequest({
+        userId: userId2
+      }, secret2))
+      .end(function(e, res){
+        // We don't expect any errors
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+
+        // We expect success to be false since there are none
+        expect(res.body.success).to.eql(false)
+
+        // We expect the reason to be "no new blurts ..."
+        expect(res.body.reason).to.eql("No new blurts available at this time")
+
+        done()
+      })
+  })
+
   it('can have the second user retrieve a random blurt from a group', function(done){
     superagent.get(api_url + 'Blurts/Random')
       .send(signRequest({
