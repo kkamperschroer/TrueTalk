@@ -405,7 +405,7 @@ describe('TrueTalk api server', function(){
       })
   })
 
-  it('can fail to retrieve any blurts, since there are none available', function(done){
+  it('can fail to retrieve any blurts, since there are none available not created by this user', function(done){
     superagent.get(api_url + 'Blurts/Random')
       .send(signRequest({
         userId: userId1
@@ -416,11 +416,101 @@ describe('TrueTalk api server', function(){
         expect(typeof res.body).to.eql('object')
 
         // We expect success to be false, since there were none for us
-        expect(res.body.success).to.eql(true)
+        expect(res.body.success).to.eql(false)
 
         // We expect the reason to be "no new blurts ..."
-        expect(res.body.reason).to.eql("No new blurts available at this time.")
+        expect(res.body.reason).to.eql("No new blurts available at this time")
 
+        done()
+      })
+  })
+
+  it('can post a second new user without a secret in the signature', function(done){
+    superagent.post(api_url + 'Users')
+      .send(signRequest({
+        fingerprint: "9876543210"
+      }))
+      .end(function(e,res){
+        // We expect not to have an error
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+        expect(res.body.success).to.eql(true)
+
+        // Verify we have an id
+        expect(res.body.id.length).to.eql(24)
+
+        // Save off this id
+        userId2 = res.body.id
+
+        // Better have a secret
+        expect(res.body.secret.length).to.eql(64)
+
+        // Save off said secret, since we need it for every
+        // single request from here on out
+        secret2 = res.body.secret
+        done()
+      })
+  })
+
+  it('can have a second user join a group', function(done){
+    superagent.post(api_url + 'Groups/Join')
+      .send(signRequest({
+        userId: userId2,
+        groupId: groupId
+      }, secret2))
+      .end(function(e, res){
+        // We expect not to have an error
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+        expect(res.body.success).to.eql(true)
+
+        done()
+      })
+  })
+
+  it('can have the second user retrieve a random blurt', function(done){
+    superagent.get(api_url + 'Blurts/Random')
+      .send(signRequest({
+        userId: userId2
+      }, secret2))
+      .end(function(e, res){
+        // We don't expect any errors
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+
+        // We expect success to be true
+        expect(res.body.success).to.eql(true)
+
+        // We expect this to be the first test blurt
+        expect(res.body.id).to.eql(blurtId)
+        expect(res.body.content).to.eql(testBlurtContent)
+        expect(res.body.requiresReply).to.eql(true)
+        expect(res.body.isPublic).to.eql(true)
+
+        done()
+      })
+  })
+
+  it('can have the second user retrieve a random blurt from a group', function(done){
+    superagent.get(api_url + 'Blurts/Random')
+      .send(signRequest({
+        userId: userId2,
+        groupId: groupId
+      }, secret2))
+      .end(function(e, res){
+        // We don't expect any errors
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+
+        // We expect success to be true
+        expect(res.body.success).to.eql(true)
+
+        // We expect this to be the first test blurt
+        expect(res.body.id).to.eql(blurt2Id)
+        expect(res.body.content).to.eql(testBlurtContent2)
+        expect(res.body.requiresReply).to.eql(false)
+        expect(res.body.isPublic).to.eql(true)
+        
         done()
       })
   })

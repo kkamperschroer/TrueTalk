@@ -69,8 +69,57 @@ router.post('/Reply', function(req, res, next){
 
 /* GET a random blurt */
 router.get('/Random', function(req, res, next){
-    // TODO -- Write this!
-    
+    // We need to grab one blurt randomly using the (possibly)
+    // provided group id
+    Blurt.find({
+        groupId: req.body.groupId,
+        creatorId: {$ne: req.user._id},
+        replyingToId: undefined, // Don't want a reply
+        receiverId: undefined
+    }, function(err, blurts){
+        if(err){
+            next(err)
+        }else if(blurts.length == 0){
+            // Nothing to send
+            var response = {}
+            response.success = false
+            response.reason = "No new blurts available at this time"
+
+            // Send it off
+            res.send(response)
+        }else{
+            // Grab one of these randomly
+            var blurt = blurts[Math.floor(Math.random()*blurts.length)]
+
+            // Set the blurts receiver id
+            blurt.receiverId = req.user._id
+
+            if (blurt.requiresReply){
+                blurt.timeout = Date.now() + 7200000; // 2 hours
+            }
+
+            // Save it
+            blurt.save()
+
+            // Push this blurts onto our users blurts
+            req.user.currentBlurts.push(blurt._id)
+            req.user.save()
+
+            // Now build the appropriate response
+            var response = {}
+            response.success = true
+            response.id  = blurt._id
+            response.content = blurt.content
+            response.createdDate = blurt.createdDate
+            response.requiresReply = blurt.requiresReply
+            response.timeout = blurt.timeout
+            response.isPublic = blurt.isPublic
+
+            // Send it off
+            res.send(response)
+        }
+    })
+
 })
 
 /* GET blurts for a specific user */
