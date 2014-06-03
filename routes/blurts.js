@@ -64,7 +64,63 @@ function sendBlurtResponse(blurt, user, res){
 
 /* POST a reply to a blurt */
 router.post('/Reply', function(req, res, next){
-    // todo
+    // Let's find the blurt this is referring to
+    Blurt.findOne({
+        _id: req.body.replyingToId
+    }, function(err, blurt){
+        if (err){
+            next(err)
+        }else if(!blurt){
+            next(new Error("No blurt exists with the given id: " + req.body.replyingToId))
+        }else{
+            // Validate this user is supposed to be replying to
+            // this blurt by grabbing the index
+            var idx = req.user.currentBlurts.indexOf(blurt._id)
+
+            // We also need to ensure the receiveId is this user
+            var isCorrectReceiver = (req.user._id.equals(blurt.receiverId))
+            if (idx < 0){
+                // Error out
+                next(new Error("User not allowed to reply to this blurt. They are not assigned."))
+            }else if(!isCorrectReceiver){
+                // Error out
+                next(new Error("This user has the blurt in currentBlurts, but is not the assigned receiver"))
+            }else{
+                // We are ok. We can reply to it!
+
+                // Create a new blurt
+                new Blurt({
+                    content: req.body.content,
+                    creatorId: req.user._id,
+                    groupId: req.body.groupId, // may be undefined
+                    requiresReply: false,
+                    isPublic: blurt.isPublic,
+                    replyingToId: blurt._id,
+                }).save(function(err, replyBlurt){
+                    if(err){
+                        next(err)
+                    }else{
+                        // Update the blurt replyId
+                        blurt.replyId = replyBlurt._id
+                        blurt.save()
+
+                        // Update the users blurts
+                        req.user.blurts.push(replyBlurt._id)
+                        req.user.currentBlurts.splice(idx, 1)
+                        req.user.save()
+
+                        // Build the response up
+                        var response = {}
+                        response.success = true
+                        response.id = replyBlurt._id
+
+                        // Send it off
+                        res.send(response)
+                    }
+                })
+            }
+        }
+    })
 })
 
 /* GET a random blurt */

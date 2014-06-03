@@ -52,10 +52,15 @@ describe('TrueTalk api server', function(){
   var userId2
   var secret2
   var groupId
-  var blurt2Id
+  var blurtId1
+  var blurtId2
+  var replyId1
+  var replyId2
   var testGroupName = "Test Group Name!"
   var testBlurtContent = "TEST BLURT!"
   var testBlurtContent2 = "TEST BLURT2!"
+  var responseContent1 = "Test reply 1"
+  var responseContent2 = "Test reply 2"
   var testBlurtResponse = "TEST response to blurt"
   var genericError = "Internal error. Likely bad request."
 
@@ -247,7 +252,7 @@ describe('TrueTalk api server', function(){
         expect(res.body.id.length).to.eql(24)
 
         // Store off this id for later
-        blurtId = res.body.id
+        blurtId1 = res.body.id
 
         // Cool. Looks good.
         done()
@@ -273,7 +278,7 @@ describe('TrueTalk api server', function(){
         expect(res.body.id.length).to.eql(24)
 
         // Store off this id for later
-        blurt2Id = res.body.id
+        blurtId2 = res.body.id
 
         // Cool. Looks perfect!
         done()
@@ -339,11 +344,11 @@ describe('TrueTalk api server', function(){
         expect(res.body.blurts.length).to.eql(2)
 
         // We expect the first to be the most recent
-        expect(res.body.blurts[0].id).to.eql(blurt2Id)
+        expect(res.body.blurts[0].id).to.eql(blurtId2)
         expect(res.body.blurts[0].content).to.eql(testBlurtContent2)
 
         // We expect the send to be the original post
-        expect(res.body.blurts[1].id).to.eql(blurtId)
+        expect(res.body.blurts[1].id).to.eql(blurtId1)
         expect(res.body.blurts[1].content).to.eql(testBlurtContent)
 
         done()
@@ -363,7 +368,7 @@ describe('TrueTalk api server', function(){
 
         // We expect only one blurt that was the global one
         expect(res.body.blurts.length).to.eql(1)
-        expect(res.body.blurts[0].id).to.eql(blurtId)
+        expect(res.body.blurts[0].id).to.eql(blurtId1)
         done()
       })
   })
@@ -382,7 +387,7 @@ describe('TrueTalk api server', function(){
 
         // We expect only one blurt that was the global one
         expect(res.body.blurts.length).to.eql(1)
-        expect(res.body.blurts[0].id).to.eql(blurt2Id)
+        expect(res.body.blurts[0].id).to.eql(blurtId2)
         done()
       })
   })
@@ -482,7 +487,7 @@ describe('TrueTalk api server', function(){
         expect(res.body.success).to.eql(true)
 
         // We expect this to be the first test blurt
-        expect(res.body.id).to.eql(blurtId)
+        expect(res.body.id).to.eql(blurtId1)
         expect(res.body.content).to.eql(testBlurtContent)
         expect(res.body.requiresReply).to.eql(true)
         expect(res.body.isPublic).to.eql(true)
@@ -526,13 +531,95 @@ describe('TrueTalk api server', function(){
         expect(res.body.success).to.eql(true)
 
         // We expect this to be the first test blurt
-        expect(res.body.id).to.eql(blurt2Id)
+        expect(res.body.id).to.eql(blurtId2)
         expect(res.body.content).to.eql(testBlurtContent2)
         expect(res.body.requiresReply).to.eql(false)
         expect(res.body.isPublic).to.eql(true)
         
         done()
       })
+  })
+
+  it('can have the second user reply to the global blurt', function(done){
+    superagent.post(api_url + 'Blurts/Reply')
+      .send(signRequest({
+        userId: userId2,
+        content: responseContent1,
+        replyingToId: blurtId1
+      }, secret2))
+      .end(function(e, res){
+        // We don't expect any errors
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+
+        // We expect success to be true
+        expect(res.body.success).to.eql(true)
+
+        // We expect to get a blurt id
+        expect(res.body.id.length).to.eql(24)
+
+        // Store it off
+        replyId1 = res.body.id
+        
+        done()
+      })
+  })
+
+  it('does not allow the first user to reply to their own blurt', function(done){
+    superagent.post(api_url + 'Blurts/Reply')
+      .send(signRequest({
+        userId: userId1,
+        content: responseContent2,
+        replyingToId: blurtId2
+      }, secret1))
+      .end(function(e, res){
+        // We don't expect any errors
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+
+        // We do expect a false success
+        expect(res.body.success).to.eql(false)
+
+        // We expect the message to be user not assigned
+        expect(res.body.message).to.eql("User not allowed to reply to this blurt. They are not assigned.")
+
+        done()
+      })    
+  })
+
+  it('can have the first user retrieve their replies', function(done){
+    // todo
+    done()
+  })
+
+  it('can have the second user reply to the group blurt', function(done){
+    superagent.post(api_url + 'Blurts/Reply')
+      .send(signRequest({
+        userId: userId2,
+        content: responseContent2,
+        replyingToId: blurtId2
+      }, secret2))
+      .end(function(e, res){
+        // We don't expect any errors
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+
+        // We expect success to be true
+        expect(res.body.success).to.eql(true)
+
+        // We expect to get a blurt id
+        expect(res.body.id.length).to.eql(24)
+
+        // Store it off
+        replyId2 = res.body.id
+        
+        done()
+      })
+  })
+
+  it('again can have the first user retrieve their replies, now getting 2', function(done){
+    // todo
+    done()
   })
 
   //// Cleanup  work! ////
