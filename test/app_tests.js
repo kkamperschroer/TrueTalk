@@ -588,8 +588,26 @@ describe('TrueTalk api server', function(){
   })
 
   it('can have the first user retrieve their replies', function(done){
-    // todo
-    done()
+    superagent.get(api_url + 'Blurts/Replies')
+      .send(signRequest({
+        userId: userId1
+      }, secret1))
+      .end(function(e, res){
+        // We don't expect any errors
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+
+        // We expect success to be true
+        expect(res.body.success).to.eql(true)
+
+        // We expect one blurt
+        expect(res.body.blurts.length).to.eql(1)
+
+        // We expect it to be the first blurt
+        expect(res.body.blurts[0].content).to.eql(responseContent1)
+
+        done()
+      })
   })
 
   it('can have the second user reply to the group blurt', function(done){
@@ -624,6 +642,7 @@ describe('TrueTalk api server', function(){
 
   //// Cleanup  work! ////
   after(function(done){
+
     // Use mongoose to remove all users, groups, and blurts
     User.find({}).remove().exec()
     Group.find({}).remove().exec()

@@ -96,6 +96,7 @@ router.post('/Reply', function(req, res, next){
                     requiresReply: false,
                     isPublic: blurt.isPublic,
                     replyingToId: blurt._id,
+                    receiverId: blurt.creatorId
                 }).save(function(err, replyBlurt){
                     if(err){
                         next(err)
@@ -287,26 +288,43 @@ router.get('/Public', function(req, res, next){
     })
 })
 
-// TODO TODO TODO -- Not yet rewritten //
-/* GET blurts that are responses for a specific user */
-router.get('/Responses', function(req, res, next){
-    // Find the user with this fingerprint
-    User.findOne({fingerprint: req.body.fingerprint}, function(err, user){
+/* GET the replies for this user */
+router.get('/Replies', function(req, res, next){
+    // Setup the before date var
+    var beforeDate = getBeforeDateTime(req.body.beforeDate)
+
+    // Run the find on blurts given the beforeDate and groupId
+    Blurt.find({
+                    receiverId: req.user._id,
+                    createdDate: {$lte: beforeDate}
+                },
+               null,
+               {limit: 50, sort: {createdDate: -1}},
+               function(err, blurts){
         if(err){
             next(err)
-        }else if (!user){
-            next(new Error("No user found with fingerprint " + req.body.fingerprint))
         }else{
-            // We have a user. Grab some blurts
-            Blurt.find({
-                '_id' : {$in: user.receivedBlurts}
-            }, function(err, blurts){
-                if (err){
-                    next(err)
-                }else{
-                    res.send(blurts)
-                }
-            })
+            // Build the response
+            var response = {}
+            response.success = true
+
+            var blurtsResponse = []
+            for(var i=0; i<blurts.length; i++){
+                var curBlurt = blurts[i]
+                var resBlurt = {}
+                resBlurt.id = curBlurt._id
+                resBlurt.createdDate = curBlurt.createdDate
+                resBlurt.content = curBlurt.content
+                resBlurt.replyingToId = curBlurt.replyingToId
+
+                blurtsResponse.push(resBlurt)
+            }
+
+            // Attach the built blurts to the response
+            response.blurts = blurtsResponse
+
+            // Send it off
+            res.send(response)
         }
     })
 })
