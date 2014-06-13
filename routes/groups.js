@@ -38,12 +38,15 @@ router.post('/Join', function(req, res, next){
             // Oh no. Already exists. Can't re-join
             next(new Error("User is already a member of this group"))
         }else{
+            // Alias the user to make references smaller
+            var user = req.user
+
             // Update the users group
-            req.user.groups.push(group._id)
-            req.user.save()
+            user.groups.push(group._id)
+            user.save()
 
             // Update the groups members
-            group.members.push(req.user._id)
+            group.members.push(user._id)
             group.save()
 
             // Ok. Build the response
@@ -87,6 +90,63 @@ router.get('/', function(req, res, next){
             response.groups = groupsResponse
 
             // Send it off
+            res.send(response)
+        }
+    })
+})
+
+/* POST to leave a group */
+router.post('/Leave', function(req, res, next){
+    // Find the group
+    Group.findOne({_id: req.body.groupId}, function(err, group){
+        if (err){
+            next(err)
+        }else{
+            // Alias the user to make references smaller
+            var user = req.user
+
+            // Remove this user from the array of members
+            var idx = group.members.indexOf(user._id)
+            group.members.splice(idx, 1)
+
+            // Remove this group for this user
+            idx = user.groups.indexOf(group._id)
+            user.groups.splice(idx, 1)
+
+            // Save them both
+            group.save()
+            user.save()
+
+            // Build the response
+            var response = {}
+            response.success = true
+
+            res.send(response)
+
+            // We should now see if this group should be removed
+            if (group.members.length == 0){
+                // Delete it!
+                group.remove()
+            }
+        }
+    })
+})
+
+/* GET the group size */
+router.get('/Size', function(req, res, next){
+    // Find this group
+    Group.findOne({_id: req.body.groupId}, function(err, group){
+        if (err){
+            next(err)
+        }else{
+            // Get the number of members
+            var size = group.members.length
+
+            // Return success with this size
+            var response = {}
+            response.success = true
+            response.size = size
+
             res.send(response)
         }
     })

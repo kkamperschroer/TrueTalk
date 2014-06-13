@@ -329,4 +329,10 @@ router.get('/Replies', function(req, res, next){
     })
 })
 
+/* POST to defer a blurt */
+router.post('/Defer', function(req, res, next){
+    var response = {todo: "working on it!"}
+    res.send(response)
+})
+
 module.exports = router;

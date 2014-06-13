@@ -54,11 +54,13 @@ describe('TrueTalk api server', function(){
   var groupId
   var blurtId1
   var blurtId2
+  var blurtId3
   var replyId1
   var replyId2
   var testGroupName = "Test Group Name!"
   var testBlurtContent = "TEST BLURT!"
   var testBlurtContent2 = "TEST BLURT2!"
+  var testBlurtContent3 = "TEST BLURT3!"
   var responseContent1 = "Test reply 1"
   var responseContent2 = "Test reply 2"
   var testBlurtResponse = "TEST response to blurt"
@@ -473,6 +475,25 @@ describe('TrueTalk api server', function(){
       })
   })
 
+  it('can retrieve the size of the group', function(done){
+    superagent.get(api_url + 'Groups/Size')
+      .send(signRequest({
+        userId: userId1,
+        groupId: groupId
+      }, secret1))
+      .end(function(e, res){
+        // We expect not to have an error
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+        expect(res.body.success).to.eql(true)
+
+        // We expect the size of the group to be 2
+        expect(res.body.size).to.eql(2)
+
+        done()
+      })
+  })
+
   it('can have the second user retrieve a random blurt', function(done){
     superagent.get(api_url + 'Blurts/Random')
       .send(signRequest({
@@ -636,8 +657,134 @@ describe('TrueTalk api server', function(){
   })
 
   it('again can have the first user retrieve their replies, now getting 2', function(done){
-    // todo
-    done()
+    superagent.get(api_url + 'Blurts/Replies')
+      .send(signRequest({
+        userId: userId1
+      }, secret1))
+      .end(function(e, res){
+        // We don't expect any errors
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+
+        // We expect success to be true
+        expect(res.body.success).to.eql(true)
+
+        // We expect two blurts
+        expect(res.body.blurts.length).to.eql(2)
+
+        // We expect it to be the second blurt (more recent)
+        expect(res.body.blurts[1].content).to.eql(responseContent1)
+
+        // We expect the second to be the first blurt
+        expect(res.body.blurts[0].content).to.eql(responseContent2)
+
+        done()
+      })
+  })
+
+  it('can allow the first user to leave a group', function(done){
+    superagent.post(api_url + 'Groups/Leave')
+      .send(signRequest({
+        userId: userId1,
+        groupId: groupId
+      }, secret1))
+      .end(function(e, res){
+        // We don't expect any errors
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+
+        // We expect success to be true
+        expect(res.body.success).to.eql(true)
+
+        done()
+      })
+  })
+
+  it('can retrieve the size of the group and find it smaller', function(done){
+    superagent.get(api_url + 'Groups/Size')
+      .send(signRequest({
+        userId: userId1,
+        groupId: groupId
+      }, secret1))
+      .end(function(e, res){
+        // We expect not to have an error
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+        expect(res.body.success).to.eql(true)
+
+        // We expect the size of the group to be 1
+        expect(res.body.size).to.eql(1)
+
+        done()
+      })
+  })
+
+  it('can post another blurt directly to a group', function(done){
+    superagent.post(api_url + 'Blurts')
+      .send(signRequest({
+        userId: userId1,
+        content: testBlurtContent3,
+        groupId: groupId,
+        requiresReply: false,
+        isPublic: true
+      }, secret1))
+      .end(function(e, res){
+        // We don't expect any issues
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+        expect(res.body.success).to.eql(true)
+
+        // We expect a blurt id in response
+        expect(res.body.id.length).to.eql(24)
+
+        // Store off this id for later
+        blurtId3 = res.body.id
+
+        // Cool. Looks perfect!
+        done()
+      })
+  })
+
+  it('can have a second user retrieve the blurt', function(done){
+    superagent.get(api_url + 'Blurts/Random')
+      .send(signRequest({
+        userId: userId2,
+        groupId: groupId
+      }, secret2))
+      .end(function(e, res){
+        // We don't expect any errors
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+
+        // We expect success to be true
+        expect(res.body.success).to.eql(true)
+
+        // We expect this to be the first test blurt
+        expect(res.body.id).to.eql(blurtId3)
+        expect(res.body.content).to.eql(testBlurtContent3)
+        expect(res.body.requiresReply).to.eql(false)
+        expect(res.body.isPublic).to.eql(true)
+
+        done()
+      })
+  })
+
+  it('can have the second user defer the first blurt', function(done){
+    superagent.post(api_url + 'Blurts/Defer')
+      .send(signRequest({
+        userId: userId2,
+        blurtId: blurtId3
+      }, secret2))
+      .end(function(e, res){
+        // We don't expect any errors
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+
+        // We expect success to be true
+        expect(res.body.success).to.eql(true)
+
+        done()
+      })
   })
 
   //// Cleanup  work! ////
