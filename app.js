@@ -8,6 +8,10 @@ var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 
+// We need domain to catch uncaught exceptions and log them
+var domain = require('domain')
+d = domain.create()
+
 // Get the routes for each portion set up
 var authRoute = require('./routes/auth');
 var indexRoute = require('./routes/index');
@@ -73,5 +77,11 @@ app.use(function(err, req, res, next) {
     });
 });
 
+// Catch anything else, in case there is some other strange
+// exception
+d.on('error', function(err){
+    console.log(err)
+})
 
 module.exports = app;
+

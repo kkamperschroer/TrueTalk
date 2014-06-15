@@ -719,13 +719,12 @@ describe('TrueTalk api server', function(){
       })
   })
 
-  it('can post another blurt directly to a group', function(done){
+  it('can post another blurt', function(done){
     superagent.post(api_url + 'Blurts')
       .send(signRequest({
         userId: userId1,
         content: testBlurtContent3,
-        groupId: groupId,
-        requiresReply: false,
+        requiresReply: true,
         isPublic: true
       }, secret1))
       .end(function(e, res){
@@ -748,8 +747,7 @@ describe('TrueTalk api server', function(){
   it('can have a second user retrieve the blurt', function(done){
     superagent.get(api_url + 'Blurts/Random')
       .send(signRequest({
-        userId: userId2,
-        groupId: groupId
+        userId: userId2
       }, secret2))
       .end(function(e, res){
         // We don't expect any errors
@@ -762,14 +760,71 @@ describe('TrueTalk api server', function(){
         // We expect this to be the first test blurt
         expect(res.body.id).to.eql(blurtId3)
         expect(res.body.content).to.eql(testBlurtContent3)
-        expect(res.body.requiresReply).to.eql(false)
+        expect(res.body.requiresReply).to.eql(true)
         expect(res.body.isPublic).to.eql(true)
 
         done()
       })
   })
 
-  it('can have the second user defer the first blurt', function(done){
+  it('can prevent the second user from deferring the wrong blurt', function(done){
+    superagent.post(api_url + 'Blurts/Defer')
+      .send(signRequest({
+        userId: userId2,
+        blurtId: blurtId2
+      }, secret2))
+      .end(function(e, res){
+        // We don't expect any errors
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+
+        // We expect success to be true
+        expect(res.body.success).to.eql(false)
+        expect(res.body.message).to.eql('This blurt has already been replied to')
+
+        done()
+      })
+  })
+
+  it('can prevent the wrong user from deferring a blurt', function(done){
+    superagent.post(api_url + 'Blurts/Defer')
+      .send(signRequest({
+        userId: userId1,
+        blurtId: blurtId3
+      }, secret1))
+      .end(function(e, res){
+        // We don't expect any errors
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+
+        // We expect success to be true
+        expect(res.body.success).to.eql(false)
+        expect(res.body.message).to.eql('This user is not the receiver for this blurt')
+
+        done()
+      })
+  })
+
+  it('can prevent the second user from deferring a non-existant blurt', function(done){
+    superagent.post(api_url + 'Blurts/Defer')
+      .send(signRequest({
+        userId: userId2,
+        blurtId: groupId // not a blurt id
+      }, secret2))
+      .end(function(e, res){
+        // We don't expect any errors
+        expect(e).to.eql(null)
+        expect(typeof res.body).to.eql('object')
+
+        // We expect success to be true
+        expect(res.body.success).to.eql(false)
+        expect(res.body.message).to.eql('No such blurt with that id')
+
+        done()
+      })
+  })
+
+  it('can have the second user defer the latest blurt', function(done){
     superagent.post(api_url + 'Blurts/Defer')
       .send(signRequest({
         userId: userId2,

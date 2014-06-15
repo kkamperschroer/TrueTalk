@@ -331,8 +331,30 @@ router.get('/Replies', function(req, res, next){
 
 /* POST to defer a blurt */
 router.post('/Defer', function(req, res, next){
-    var response = {todo: "working on it!"}
-    res.send(response)
+    Blurt.findOne({_id: req.body.blurtId}, function(err, blurt){
+        if (err){
+            next(err)
+        }else if(blurt){
+            if (blurt.receiverId == undefined ||
+                !blurt.receiverId.equals(req.user._id)){
+                next(new Error('This user is not the receiver for this blurt'))
+            }else if (blurt.replyId != undefined){
+                next(new Error('This blurt has already been replied to'))
+            }else{
+                // Remove the receiver id
+                blurt.receiverId = undefined
+                blurt.save()
+
+                var response = {}
+                response.success = true
+
+                res.send(response)
+            }
+        }else{
+            // Yikes. Return error
+            next(new Error('No such blurt with that id'))
+        }
+    })
 })
 
 module.exports = router;
